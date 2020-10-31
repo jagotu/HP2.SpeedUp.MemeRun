@@ -1,7 +1,7 @@
 ## HP2.SpeedUp.MemeRun
 HP2 but every green split it gets 10% slower and every red split it gets 10% faster
 
-Shamelessly based on [https://github.com/LiveSplit/LiveSplit.Counter](Livesplit.Counter project)
+Shamelessly based on [https://github.com/LiveSplit/LiveSplit.Counter/]("Livesplit.Counter project" "Livesplit.Counter project")
 
 ## Packages / Requirements
 
