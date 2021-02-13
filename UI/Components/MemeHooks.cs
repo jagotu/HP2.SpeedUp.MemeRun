@@ -34,13 +34,13 @@ namespace LiveSplit.UI.Components
 
         Process GetGameProcess()
         {
-            Process p = Process.GetProcesses().FirstOrDefault(x => x.ProcessName.ToLower().Equals("game"));
+            Process p = Process.GetProcesses().FirstOrDefault(x => x.ProcessName.ToLower().Equals("hppoa"));
 
             if (p == null || p.HasExited)
                 return null;
 
             // process is up, check if engine and server are both loaded yet
-            ProcessModuleWow64Safe render = p.ModulesWow64Safe().FirstOrDefault(x => x.ModuleName.ToLower() == "render.dll");
+            ProcessModuleWow64Safe render = p.ModulesWow64Safe().FirstOrDefault(x => x.ModuleName.ToLower() == "engine.dll");
             if (render == null)
                 return null;
 
@@ -51,10 +51,10 @@ namespace LiveSplit.UI.Components
         void HandleProcess(Process game, CancellationTokenSource cts)
         {
 
-            ProcessModuleWow64Safe render = game.ModulesWow64Safe().FirstOrDefault(x => x.ModuleName.ToLower() == "render.dll");
+            ProcessModuleWow64Safe render = game.ModulesWow64Safe().FirstOrDefault(x => x.ModuleName.ToLower() == "engine.dll");
 
             var renderBase = render.BaseAddress;
-            var speedPtr = new DeepPointer(renderBase+ 0x0004DA60, new int[] { 0xB4, 0x404 });
+            var speedPtr = new DeepPointer(renderBase+ 0x004E0298, new int[] { 0x68, 0x9C, 0x484 });
 
             while (!game.HasExited && !cts.IsCancellationRequested)
             {
