@@ -106,6 +106,8 @@ namespace LiveSplit.UI.Components
 
         private int lastSplitIndex = -1;
 
+        private Stack<float> history = new Stack<float>();
+
         public void Update(IInvalidator invalidator, Model.LiveSplitState state, float width, float height, LayoutMode mode)
         {
 
@@ -114,10 +116,11 @@ namespace LiveSplit.UI.Components
             {
                 memeHooks.targetSpeed = 1.0f;
                 lastSplitIndex = 0;
+                history.Clear();
             }
-            else if (state.CurrentSplitIndex != lastSplitIndex)
+            else if (state.CurrentSplitIndex > lastSplitIndex)
             {
-                lastSplitIndex = state.CurrentSplitIndex;
+                history.Push(memeHooks.targetSpeed);
                 var lastSplitComparison = state.Run[state.CurrentSplitIndex - 1].Comparisons[state.CurrentComparison][state.CurrentTimingMethod];
                 var lastSplitTime = state.Run[state.CurrentSplitIndex - 1].SplitTime[state.CurrentTimingMethod];
                 if (lastSplitTime > lastSplitComparison)
@@ -127,10 +130,19 @@ namespace LiveSplit.UI.Components
                 {
                     memeHooks.targetSpeed *= 0.9f;
                 }
+               
 
+            } else if(state.CurrentSplitIndex < lastSplitIndex)
+            {
+                for (int i = 0; i < lastSplitIndex - state.CurrentSplitIndex - 1; i++)
+                {
+                    history.Pop();
+                }
+                memeHooks.targetSpeed = history.Pop();
             }
-            
-            
+
+            lastSplitIndex = state.CurrentSplitIndex;
+
             TextLabel.Text = memeHooks.state;
 
             Cache.Restart();

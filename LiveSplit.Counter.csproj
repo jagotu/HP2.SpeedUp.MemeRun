@@ -44,7 +44,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="LiveSplit.Core">
-      <HintPath>..\..\..\jagotu\Downloads\LiveSplit_1.8.15\LiveSplit.Core.dll</HintPath>
+      <HintPath>D:\jagotu\Downloads\LiveSplit_1.8.16\LiveSplit.Core.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -56,7 +56,7 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
     <Reference Include="UpdateManager">
-      <HintPath>..\..\..\jagotu\Downloads\LiveSplit_1.8.15\UpdateManager.dll</HintPath>
+      <HintPath>D:\jagotu\Downloads\LiveSplit_1.8.16\UpdateManager.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>

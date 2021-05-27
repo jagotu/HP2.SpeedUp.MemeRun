@@ -10,6 +10,108 @@ using LiveSplit.ComponentUtil;
 
 namespace LiveSplit.UI.Components
 {
+    abstract class MemeGame
+    {
+        public DeepPointer speedptr;
+        public string Name;
+        public Process process;
+        public IntPtr dllBase;
+
+
+        public abstract string getDllName();
+
+        public abstract string getExeName();
+
+        public virtual void bind(Process process)
+        {
+            this.process = process;
+            this.dllBase = process.ModulesWow64Safe().FirstOrDefault(x => x.ModuleName.ToLower() == getDllName()).BaseAddress;
+        }
+
+        public bool tryFind()
+        {
+            Process p = Process.GetProcesses().FirstOrDefault(x => x.ProcessName.ToLower().Equals(getExeName()));
+
+            if (p == null || p.HasExited)
+                return false;
+
+            // process is up, check if dll is loaded
+            ProcessModuleWow64Safe dll = p.ModulesWow64Safe().FirstOrDefault(x => x.ModuleName.ToLower() == getDllName());
+            if (dll == null)
+                return false;
+
+            bind(p);
+
+            return true;
+        }
+    }
+
+    class HP1Game : MemeGame
+    {
+
+        public override string getDllName()
+        {
+            return "render.dll";
+        }
+
+        public override string getExeName()
+        {
+            return "hp";
+        }
+
+        public override void bind(Process process)
+        {
+            base.bind(process);
+            this.speedptr = new DeepPointer(this.dllBase + 0x0004B360, new int[] { 0x7C, 0x3B0 });
+            this.process = process;
+            this.Name = "HP1";
+        }
+    }
+
+    class HP2Game : MemeGame
+    {
+
+        public override string getDllName()
+        {
+            return "render.dll";
+        }
+
+        public override string getExeName()
+        {
+            return "game";
+        }
+
+        public override void bind(Process process)
+        {
+            base.bind(process);
+            this.speedptr = new DeepPointer(this.dllBase + 0x0004DA60, new int[] { 0xB4, 0x404 });
+            this.process = process;
+            this.Name = "HP2";
+        }
+    }
+
+    class HP3Game : MemeGame
+    {
+
+        public override string getDllName()
+        {
+            return "engine.dll";
+        }
+
+        public override string getExeName()
+        {
+            return "hppoa";
+        }
+
+        public override void bind(Process process)
+        {
+            base.bind(process);
+            this.speedptr = new DeepPointer(dllBase + 0x004E0298, new int[] { 0x68, 0x9C, 0x484 });
+            this.process = process;
+            this.Name = "HP3";
+        }
+    }
+
     class MemeHooks
     {
         public string state;
@@ -22,6 +124,8 @@ namespace LiveSplit.UI.Components
         private Task _thread;
         private CancellationTokenSource _cancelSource;
 
+        static MemeGame[] games = new MemeGame[] { new HP1Game(), new HP2Game(), new HP3Game() };
+
         public float targetSpeed = 1.0f;
         public float lastSpeed = 1.0f;
 
@@ -32,44 +136,36 @@ namespace LiveSplit.UI.Components
             _thread = Task.Factory.StartNew(() => MemoryReadThread(_cancelSource));
         }
 
-        Process GetGameProcess()
+        MemeGame GetGameProcess()
         {
-            Process p = Process.GetProcesses().FirstOrDefault(x => x.ProcessName.ToLower().Equals("game"));
-
-            if (p == null || p.HasExited)
-                return null;
-
-            // process is up, check if engine and server are both loaded yet
-            ProcessModuleWow64Safe render = p.ModulesWow64Safe().FirstOrDefault(x => x.ModuleName.ToLower() == "render.dll");
-            if (render == null)
-                return null;
-
-            return p;
+            foreach(MemeGame game in games)
+            {
+                if (game.tryFind())
+                    return game;
+            }
+            return null;
         }
 
 
-        void HandleProcess(Process game, CancellationTokenSource cts)
+        void HandleGame(MemeGame game, CancellationTokenSource cts)
         {
 
-            ProcessModuleWow64Safe render = game.ModulesWow64Safe().FirstOrDefault(x => x.ModuleName.ToLower() == "render.dll");
+     
 
-            var renderBase = render.BaseAddress;
-            var speedPtr = new DeepPointer(renderBase+ 0x0004DA60, new int[] { 0xB4, 0x404 });
-
-            while (!game.HasExited && !cts.IsCancellationRequested)
+            while (!game.process.HasExited && !cts.IsCancellationRequested)
             {
                 // iteration must never take longer than 1 tick
-                byte[] CurrentSpeedBytes = speedPtr.DerefBytes(game, 4);
+                byte[] CurrentSpeedBytes = game.speedptr.DerefBytes(game.process, 4);
                 float CurrentSpeed = BitConverter.ToSingle(CurrentSpeedBytes, 0);
-                this.state = "Current game speed = " + CurrentSpeed.ToString("0.00");
+                this.state = "Current game speed = " + CurrentSpeed.ToString("0.00") + " (" + game.Name + ")";
 
                 IntPtr ptr;
                 
 
-                if((CurrentSpeed == 1.0f || (CurrentSpeed == lastSpeed && lastSpeed != targetSpeed)) && speedPtr.DerefOffsets(game, out ptr))
+                if((CurrentSpeed == 1.0f || (CurrentSpeed == lastSpeed && lastSpeed != targetSpeed)) && game.speedptr.DerefOffsets(game.process, out ptr))
                 {
                     byte[] buffer = BitConverter.GetBytes(targetSpeed);
-                    game.WriteBytes(ptr, buffer);
+                    game.process.WriteBytes(ptr, buffer);
                     lastSpeed = targetSpeed;
                 }
 
@@ -87,7 +183,7 @@ namespace LiveSplit.UI.Components
                 state = "Waiting for process";
                 try
                 {
-                    Process game;
+                    MemeGame game;
                     game = this.GetGameProcess();
                     while (game == null)
                     {
@@ -99,7 +195,7 @@ namespace LiveSplit.UI.Components
                         game = this.GetGameProcess();
                     }
 
-                    this.HandleProcess(game, cts);
+                    this.HandleGame(game, cts);
 
                     if (cts.IsCancellationRequested)
                         goto ret;
